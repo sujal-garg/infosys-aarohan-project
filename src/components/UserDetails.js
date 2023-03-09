@@ -1,18 +1,22 @@
 import React from "react";
 import { useState } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
 import { getStorage } from "firebase/storage";
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
+import { collection, addDoc, getFirestore } from 'firebase/firestore'
 
 export default function UserDetails() {
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("");
-  const [file, setFile] = useState("");
+  const [name, setName] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [file, setFile] = useState('')
+  const [fileURL, setFileURL] = useState('')
 
   function handleFileChange(event) {
     setFile(event.target.files[0]);
   }
 
-  function handleFileUpload(){
+  async function handleFileUpload(){
     const storage = getStorage()
     if(!file) return alert('Please select a file.')
     const storageRef = ref(storage, `files/${Date.now()}`)
@@ -23,9 +27,24 @@ export default function UserDetails() {
       console.log(percent)
     }, (err) => console.log(err), () => {
       getDownloadURL(uploadTask.snapshot.ref).then((url) => {
-        console.log(url)
+        setFileURL(url)
       })
     })
+
+    // Sending data to Cloud Firestore
+    const db = getFirestore()
+    const userDetails = {
+      name: name,
+      phoneNumber: phoneNumber,
+      imageLink: fileURL
+    }
+    try {
+      await addDoc(collection(db, 'users'), userDetails)
+      toast.success('Data uploaded successfully.')
+    } catch (err){
+      console.log(err)
+      toast.error('There is some error from our side.')
+    }
   }
 
   return (
@@ -35,15 +54,15 @@ export default function UserDetails() {
         <input
           className="focus:outline-0 bg-slate-50 border-2 rounded-md w-80 p-2"
           placeholder="Legal Name"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          value={name}
+          onChange={(event) => setName(event.target.value)}
         ></input>
 
         <input
           className="focus:outline-0 bg-slate-50 border-2 rounded-md w-80 p-2 ml-2"
           placeholder="Phone Number"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          value={phoneNumber}
+          onChange={(event) => setPhoneNumber(event.target.value)}
         ></input>
 
         <div className="flex">
@@ -54,6 +73,7 @@ export default function UserDetails() {
           </div>
         </div>
       </div>
+      <ToastContainer/>
     </>
   );
 }
